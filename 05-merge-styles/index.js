@@ -1,21 +1,27 @@
-const fs = require('fs/promises');
-const fsStream = require('fs');
+const fsPromise = require('fs/promises');
+const fs = require('fs');
 const path = require('path');
-const SRC_URL = path.join(__dirname,'styles');
-const DEST_URL = path.join(__dirname,'project-dist', 'bundle.css');
+
+
+createBundle()
+
+function createBundle(srcFolderURL,destinationFileURL) {
+const SRC_URL = srcFolderURL || path.join(__dirname,'styles') 
+const DEST_URL = destinationFileURL || path.join(__dirname,'project-dist', 'bundle.css');
 
 createEmptyFile(DEST_URL)
 .then(() => readDir(SRC_URL))
 .then((files)=> getUrls(SRC_URL,files))
-.then((urls) => appendToBundle(DEST_URL, urls))
+.then((urls) => appendToBundle(urls, DEST_URL))
 .catch((error)=> console.log('Error', error.message));
+}
 
 function createEmptyFile(url) {
-  return fs.writeFile(url,'')
+  return fsPromise.writeFile(url,'')
 }
 
 function readDir(url) { 
-    return fs.readdir(url, {withFileTypes: true})
+  return fsPromise.readdir(url, {withFileTypes: true})
 }
 
 function getUrls(url,files) {
@@ -23,25 +29,18 @@ function getUrls(url,files) {
   .filter( item => item !== undefined)
 }
 
-async function appendToBundle(destUrl, urlArray) {
-  appendNext(await urlArray.shift())
-  
-async  function appendNext(url) {
-    if (url) {
+async function appendToBundle(urlArray, destUrl) {
+    let srcUrl = await urlArray.shift()
+    if (srcUrl) {
       try { 
-        let readStream = fsStream.createReadStream(url, "utf8");
-        readStream.on('data', async (chunk) => {
-          await fs.appendFile(destUrl,chunk)
-          appendNext(urlArray.shift())
-        })
+        let data = await fsPromise.readFile(srcUrl,{encoding:'utf8'})
+        await fsPromise.appendFile(destUrl , data)
+        appendToBundle(urlArray, destUrl);
       } catch(error) {
         console.log('Error to append:', error.message);
       }
     }
-  }       
-}
-
-
+}       
 
 
 
